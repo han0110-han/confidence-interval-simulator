@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>置信区间模拟器 - 正态分布(σ已知)</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Microsoft YaHei', sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 15px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            overflow: hidden;
+            height: 95vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .header {
+            background: #2c3e50;
+            color: white;
+            padding: 15px;
+            text-align: center;
+            flex-shrink: 0;
+        }
+        
+        .header h1 {
+            font-size: 1.6em;
+            margin-bottom: 5px;
+        }
+        
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            padding: 15px;
+            flex: 1;
+            overflow: hidden;
+        }
+        
+        .control-panel {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            overflow-y: auto;
+        }
+        
+        .results-panel {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .control-group {
+            margin-bottom: 15px;
+        }
+        
+        .control-group h3 {
+            color: #2c3e50;
+            margin-bottom: 12px;
+            font-size: 1em;
+            border-left: 4px solid #3498db;
+            padding-left: 8px;
+        }
+        
+        .input-group {
+            margin: 10px 0;
+        }
+        
+        .input-group label {
+            display: block;
+            margin-bottom: 4px;
+            font-size: 0.85em;
+            color: #555;
+            font-weight: bold;
+        }
+        
+        .input-group input {
+            width: 100%;
+            padding: 6px 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 0.85em;
+        }
+        
+        .input-group input:focus {
+            outline: none;
+            border-color: #3498db;
+            box-shadow: 0 0 3px rgba(52, 152, 219, 0.3);
+        }
+        
+        .button-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin: 15px 0;
+        }
+        
+        button {
+            padding: 8px 12px;
+            border: none;
+            border-radius: 4px;
+            background: #3498db;
+            color: white;
+            font-size: 0.85em;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        button:hover {
+            background: #2980b9;
+        }
+        
+        .btn-reset {
+            background: #e74c3c;
+        }
+        
+        .btn-reset:hover {
+            background: #c0392b;
+        }
+        
+        .theory {
+            background: #e8f4fd;
+            padding: 8px;
+            border-radius: 4px;
+            margin: 8px 0;
+            font-size: 0.8em;
+            border-left: 3px solid #3498db;
+        }
+        
+        .results-section {
+            margin-bottom: 15px;
+        }
+        
+        .result-item {
+            margin: 6px 0;
+            font-size: 0.85em;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .result-value {
+            font-weight: bold;
+            color: #2c3e50;
+            text-align: right;
+        }
+        
+        .formula {
+            background: #fff3cd;
+            padding: 8px;
+            border-radius: 4px;
+            margin: 8px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 0.8em;
+            border-left: 3px solid #ffc107;
+        }
+        
+        .stats {
+            background: #34495e;
+            color: white;
+            padding: 12px;
+            border-radius: 4px;
+            margin-top: 10px;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+        
+        .stat-item {
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 1.3em;
+            font-weight: bold;
+            margin: 3px 0;
+        }
+        
+        .success {
+            color: #2ecc71;
+        }
+        
+        .failure {
+            color: #e74c3c;
+        }
+        
+        .safety-status {
+            padding: 10px;
+            border-radius: 4px;
+            text-align: center;
+            font-weight: bold;
+            margin: 8px 0;
+            font-size: 0.9em;
+        }
+        
+        .safe {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .warning {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+        
+        .danger {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .history-section {
+            flex: 1;
+            overflow-y: auto;
+            margin-top: 10px;
+        }
+        
+        .history-item {
+            background: white;
+            padding: 8px;
+            margin: 5px 0;
+            border-radius: 4px;
+            border-left: 4px solid #3498db;
+            font-size: 0.8em;
+        }
+        
+        .history-success {
+            border-left-color: #2ecc71;
+        }
+        
+        .history-failure {
+            border-left-color: #e74c3c;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📊 置信区间模拟器 - 正态分布(σ已知)</h1>
+            <p>猪肉安全检测 - 基于Z分布的置信区间计算</p>
+        </div>
+        
+        <div class="main-content">
+            <!-- 左侧：控制面板 -->
+            <div class="control-panel">
+                <div class="control-group">
+                    <h3>总体参数设置</h3>
+                    <div class="input-group">
+                        <label>总体均值 μ (μg/kg):</label>
+                        <input type="number" id="trueMean" value="0.85" step="0.05" min="0.5" max="1.2">
+                    </div>
+                    <div class="input-group">
+                        <label>总体标准差 σ (μg/kg):</label>
+                        <input type="number" id="trueStd" value="0.18" step="0.01" min="0.1" max="0.4">
+                    </div>
+                </div>
+                
+                <div class="control-group">
+                    <h3>抽样实验设置</h3>
+                    <div class="input-group">
+                        <label>样本量 n:</label>
+                        <input type="number" id="sampleSize" value="16" step="1" min="5" max="100">
+                    </div>
+                    <div class="input-group">
+                        <label>置信水平:</label>
+                        <input type="number" id="confidenceLevel" value="0.95" step="0.01" min="0.90" max="0.99">
+                    </div>
+                </div>
+                
+                <div class="theory">
+                    <strong>理论依据：</strong><br>
+                    总体服从正态分布且σ已知时：
+                    \[
+                    \bar{x} \pm z_{\alpha/2} \cdot \frac{\sigma}{\sqrt{n}}
+                    \]
+                </div>
+                
+                <div class="control-group">
+                    <h3>实验控制</h3>
+                    <div class="button-group">
+                        <button onclick="runSingleSimulation()">单次抽样</button>
+                        <button onclick="runMultipleSimulations(10)">10次抽样</button>
+                        <button onclick="runMultipleSimulations(50)">50次抽样</button>
+                        <button class="btn-reset" onclick="resetSimulation()">重置</button>
+                    </div>
+                </div>
+                
+                <div class="stats">
+                    <h3 style="text-align: center; margin-bottom: 10px; color: white;">统计摘要</h3>
+                    <div class="stats-grid">
+                        <div class="stat-item">
+                            <div>总抽样次数</div>
+                            <div class="stat-value" id="totalCount">0</div>
+                        </div>
+                        <div class="stat-item">
+                            <div>成功区间</div>
+                            <div class="stat-value success" id="successCount">0</div>
+                        </div>
+                        <div class="stat-item">
+                            <div>失败区间</div>
+                            <div class="stat-value failure" id="failCount">0</div>
+                        </div>
+                        <div class="stat-item">
+                            <div>置信水平</div>
+                            <div class="stat-value" id="actualConfidence">0%</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 右侧：抽样结果 -->
+            <div class="results-panel">
+                <div class="control-group">
+                    <h3>当前抽样结果</h3>
+                    <div class="result-item">
+                        <span>样本均值:</span>
+                        <span class="result-value" id="sampleMean">-</span>
+                    </div>
+                    <div class="result-item">
+                        <span>置信区间:</span>
+                        <span class="result-value" id="currentInterval">-</span>
+                    </div>
+                    <div class="result-item">
+                        <span>边际误差:</span>
+                        <span class="result-value" id="marginError">-</span>
+                    </div>
+                    <div class="result-item">
+                        <span>包含真实值:</span>
+                        <span class="result-value" id="containsTrue">-</span>
+                    </div>
+                    
+                    <div id="safetyStatus" class="safety-status">
+                        等待抽样结果...
+                    </div>
+                </div>
+                
+                <div class="control-group">
+                    <h3>计算公式</h3>
+                    <div class="formula" id="calculationFormula">
+                        输入参数后点击"单次抽样"查看详细计算过程
+                    </div>
+                </div>
+                
+                <div class="control-group">
+                    <h3>抽样历史</h3>
+                    <div class="history-section" id="historySection">
+                        <div class="history-item">
+                            暂无抽样记录，点击"单次抽样"开始实验
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 全局变量
+        let simulations = [];
+        let totalCount = 0;
+        let successCount = 0;
+        
+        // 生成正态分布随机数
+        function normalRandom(mean, std) {
+            let u = 0, v = 0;
+            while(u === 0) u = Math.random();
+            while(v === 0) v = Math.random();
+            const z = Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
+            return mean + std * z;
+        }
+        
+        // 获取Z值
+        function getZValue(confidenceLevel) {
+            const zTable = {
+                0.90: 1.645,
+                0.95: 1.96,
+                0.99: 2.576
+            };
+            return zTable[confidenceLevel] || 1.96;
+        }
+        
+        // 运行单次模拟
+        function runSingleSimulation() {
+            const trueMean = parseFloat(document.getElementById('trueMean').value);
+            const trueStd = parseFloat(document.getElementById('trueStd').value);
+            const sampleSize = parseInt(document.getElementById('sampleSize').value);
+            const confidenceLevel = parseFloat(document.getElementById('confidenceLevel').value);
+            
+            // 生成样本数据
+            let sampleSum = 0;
+            for (let i = 0; i < sampleSize; i++) {
+                sampleSum += normalRandom(trueMean, trueStd);
+            }
+            const sampleMean = sampleSum / sampleSize;
+            
+            // 计算置信区间
+            const zValue = getZValue(confidenceLevel);
+            const standardError = trueStd / Math.sqrt(sampleSize);
+            const marginError = zValue * standardError;
+            const lower = sampleMean - marginError;
+            const upper = sampleMean + marginError;
+            const success = lower <= trueMean && trueMean <= upper;
+            
+            // 保存结果
+            const result = {
+                id: totalCount + 1,
+                sampleMean: sampleMean,
+                lower: lower,
+                upper: upper,
+                success: success,
+                marginError: marginError,
+                trueMean: trueMean
+            };
+            
+            simulations.push(result);
+            totalCount++;
+            if (success) successCount++;
+            
+            // 更新显示
+            updateDisplay(result, trueMean, trueStd, sampleSize, confidenceLevel, zValue, standardError);
+            updateStats();
+            updateHistory();
+        }
+        
+        // 运行多次模拟
+        function runMultipleSimulations(count) {
+            for (let i = 0; i < count; i++) {
+                setTimeout(() => runSingleSimulation(), i * 30);
+            }
+        }
+        
+        // 重置模拟
+        function resetSimulation() {
+            simulations = [];
+            totalCount = 0;
+            successCount = 0;
+            updateStats();
+            clearDisplay();
+            updateHistory();
+        }
+        
+        // 清空显示
+        function clearDisplay() {
+            document.getElementById('sampleMean').textContent = '-';
+            document.getElementById('currentInterval').textContent = '-';
+            document.getElementById('marginError').textContent = '-';
+            document.getElementById('containsTrue').textContent = '-';
+            document.getElementById('safetyStatus').textContent = '等待抽样结果...';
+            document.getElementById('safetyStatus').className = 'safety-status';
+            document.getElementById('calculationFormula').innerHTML = 
+                '输入参数后点击"单次抽样"查看详细计算过程';
+        }
+        
+        // 更新结果显示
+        function updateDisplay(result, trueMean, trueStd, sampleSize, confidenceLevel, zValue, standardError) {
+            document.getElementById('sampleMean').textContent = result.sampleMean.toFixed(3) + ' μg/kg';
+            document.getElementById('currentInterval').textContent = 
+                `[${result.lower.toFixed(3)}, ${result.upper.toFixed(3)}]`;
+            document.getElementById('marginError').textContent = result.marginError.toFixed(3) + ' μg/kg';
+            document.getElementById('containsTrue').textContent = result.success ? '是 ✅' : '否 ❌';
+            
+            // 安全状态显示
+            const safetyStandard = 1.0;
+            let safetyText, safetyClass;
+            if (result.upper < safetyStandard) {
+                safetyText = '✅ 安全达标 - 整体质量合格';
+                safetyClass = 'safe';
+            } else if (result.lower > safetyStandard) {
+                safetyText = '❌ 安全超标 - 需要处理';
+                safetyClass = 'danger';
+            } else {
+                safetyText = '⚠️ 临界状态 - 需要加强监控';
+                safetyClass = 'warning';
+            }
+            document.getElementById('safetyStatus').textContent = safetyText;
+            document.getElementById('safetyStatus').className = `safety-status ${safetyClass}`;
+            
+            // 显示计算公式
+            document.getElementById('calculationFormula').innerHTML = 
+                `样本均值: ${result.sampleMean.toFixed(3)}<br>
+                边际误差: ${zValue} × (${trueStd.toFixed(2)}/√${sampleSize})<br>
+                = ${zValue} × ${standardError.toFixed(3)} = ${result.marginError.toFixed(3)}<br>
+                置信区间: ${result.sampleMean.toFixed(3)} ± ${result.marginError.toFixed(3)}<br>
+                = [${result.lower.toFixed(3)}, ${result.upper.toFixed(3)}]`;
+        }
+        
+        // 更新统计信息
+        function updateStats() {
+            document.getElementById('totalCount').textContent = totalCount;
+            document.getElementById('successCount').textContent = successCount;
+            document.getElementById('failCount').textContent = totalCount - successCount;
+            
+            const actualConfidence = totalCount > 0 ? 
+                ((successCount / totalCount) * 100).toFixed(1) + '%' : '0%';
+            document.getElementById('actualConfidence').textContent = actualConfidence;
+        }
+        
+        // 更新历史记录
+        function updateHistory() {
+            const historySection = document.getElementById('historySection');
+            if (simulations.length === 0) {
+                historySection.innerHTML = '<div class="history-item">暂无抽样记录，点击"单次抽样"开始实验</div>';
+                return;
+            }
+            
+            let historyHTML = '';
+            // 显示最近20条记录
+            const recentSimulations = simulations.slice(-20).reverse();
+            
+            recentSimulations.forEach(sim => {
+                const statusClass = sim.success ? 'history-success' : 'history-failure';
+                const statusIcon = sim.success ? '✅' : '❌';
+                historyHTML += `
+                    <div class="history-item ${statusClass}">
+                        <strong>#${sim.id}</strong> - 均值: ${sim.sampleMean.toFixed(3)} 
+                        - 区间: [${sim.lower.toFixed(3)}, ${sim.upper.toFixed(3)}] 
+                        ${statusIcon}
+                    </div>
+                `;
+            });
+            
+            historySection.innerHTML = historyHTML;
+        }
+    </script>
+</body>
+</html>
